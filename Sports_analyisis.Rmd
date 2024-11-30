@@ -28,9 +28,6 @@ setwd("C:/Users/s-ohn/OneDrive/デスクトップ/Machine_learing_r")
 # read training data
 training <- read.csv("pml-training.csv", header = TRUE, na.strings = c("NA", ""))
 
-# Structure of the data
-str(training)
-
 # dimensions of the data
 dim(training)
 

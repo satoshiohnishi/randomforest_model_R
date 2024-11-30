@@ -1,0 +1,109 @@
+---
+title: "Sports activity classification"
+author: "Satoshi Ohnishi"
+date: "2024-11-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+In this project, I created a random forest model to classify sports activities using the data from the sensors attached to the body. 
+
+The details of the data are from [this  link](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har)
+
+
+## 1. Load the data, data understanding and data cleaning
+
+First, I loaded the data and checked the structure of the data. The data has 19622 observations and 160 variables. The class variable is "classe" and it has 5 unique values.
+
+Next, I checked for missing values in the data. There are many missing values in the data. I removed the columns with missing
+
+
+```{r, echo=TRUE}
+# Change the working directory
+setwd("C:/Users/s-ohn/OneDrive/デスクトップ/Machine_learing_r")
+# read training data
+training <- read.csv("pml-training.csv", header = TRUE, na.strings = c("NA", ""))
+
+# Structure of the data
+str(training)
+
+# dimensions of the data
+dim(training)
+
+# unique values of the class variable
+table(training$classe)
+
+# convert class to a factor
+training$classe <- as.factor(training$classe)
+
+# remove columns with missing values
+training <- training[, colSums(is.na(training)) == 0]
+
+# remove unnessary columns such as
+# X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window columns
+training <- training[, -c(1, 2, 3, 4, 5, 6)]
+
+# Check the structure of the data after removing the columns
+str(training)
+dim(training)
+```
+
+
+## 2. Build the model and validate the model
+Now, data is ready for building the model. I split the data into training and testing data. I used 70% of the data for training and 30% of the data for testing. I built a random forest model using the training data and validated the model using the testing data. 
+
+```{r, echo=TRUE}
+set.seed(123)
+library(caret)
+# Split the data into training and validation sets
+inTrain <- createDataPartition(y = training$classe, p = 0.7, list = FALSE)
+training <- training[inTrain, ]
+validation <- training[-inTrain, ]
+
+# Train a random forest model
+library(randomForest)
+model <- randomForest(classe ~ ., data = training, ntree = 50)
+
+# Predict on the validation set
+predicted <- predict(model, validation, type = "class")
+
+# Confusion matrix
+confusionMatrix(predicted, validation$classe)
+
+# plot the matirx with heatmap
+M <- confusionMatrix(predicted, validation$classe)$table
+# plot the matrix
+library(ggplot2)
+ggplot(data = as.data.frame(M), aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+  theme_minimal() +
+  scale_fill_gradient(low = "white", high = "skyblue") +
+  # add grid lines vertical and horizontal
+  geom_hline(yintercept = seq(0.5, nrow(M) - 0.5, by = 1), color = "grey",
+             size = 0.2) +
+  geom_vline(xintercept = seq(0.5, ncol(M) - 0.5, by = 1), color = "grey",
+             size = 0.2) +
+  labs(x = "Reference", y = "Prediction") + 
+  # title
+  ggtitle("Confusion Matrix of the model")
+```
+
+
+## 3. Prediction on the test data
+The model is 100% accurate on the validation data. Now, I will predict the class labels on the test data.
+
+```{r, echo=TRUE}
+# read testing data
+testing <- read.csv("pml-testing.csv", header = TRUE, na.strings = c("NA", ""))
+testing <- testing[, colSums(is.na(testing)) == 0]
+testing <- testing[, -c(1, 2, 3, 4, 5, 6)]
+
+# Predict on the testing set
+predicted <- predict(model, testing, type = "class")
+predicted
+```
